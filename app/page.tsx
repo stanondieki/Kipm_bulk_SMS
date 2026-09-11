@@ -22,6 +22,7 @@ import {
 } from "@/lib/phone";
 import type { SendResult } from "@/lib/africastalking";
 import { ConfirmSendDialog } from "@/components/ConfirmSendDialog";
+import { Toast } from "@/components/Toast";
 
 interface SendApiResponse {
   totalRequested: number;
@@ -39,6 +40,7 @@ export default function Home() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [result, setResult] = useState<SendApiResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ message: string; tone: "success" | "error" } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const parsed = useMemo(() => {
@@ -101,6 +103,17 @@ export default function Home() {
         setError(data.error || "Failed to send messages.");
       } else {
         setResult(data);
+        const sentOk = (data.results as SendResult[]).filter((r) => r.status === "Success").length;
+        const total = data.results.length;
+        setToast({
+          tone: sentOk === total ? "success" : "error",
+          message:
+            sentOk === total
+              ? `Message sent to ${sentOk} recipient${sentOk === 1 ? "" : "s"}.`
+              : `Sent to ${sentOk} of ${total} recipient${total === 1 ? "" : "s"} — ${
+                  total - sentOk
+                } failed.`,
+        });
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Network error while sending.");
@@ -373,6 +386,15 @@ export default function Home() {
         onConfirm={performSend}
         onCancel={() => setConfirmOpen(false)}
       />
+
+      {toast && (
+        <Toast
+          key={toast.message}
+          message={toast.message}
+          tone={toast.tone}
+          onClose={() => setToast(null)}
+        />
+      )}
     </main>
   );
 }
